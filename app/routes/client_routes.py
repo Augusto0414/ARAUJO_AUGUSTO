@@ -1,6 +1,8 @@
-from fastapi import APIRouter
-
+from fastapi import APIRouter,Depends
+from app.dependencies import get_db
+from sqlalchemy.orm import Session
 from app.schemas.client_schema import ClientCreate
+from app.models.client import Client
 
 router = APIRouter(
     prefix="/clients",
@@ -9,23 +11,22 @@ router = APIRouter(
 
 
 @router.post("/")
-def create_client(client: ClientCreate):
-
-    return {
-        "message": "Client created",
-        "data": client
-    }
-
+def create_client(client: ClientCreate, db: Session = Depends(get_db)):
+    newClient = Client(
+        name=client.name,
+        email=client.email,
+        phone=client.phone,
+        document=client.document
+    )
+    db.add(newClient)
+    db.commit()
+    db.refresh(newClient)
+    return newClient
 
 @router.get("/")
-def get_clients():
+def get_clients(db: Session = Depends(get_db)):
+    return db.query(Client).all()
 
-    return [
-        {
-            "id": 1,
-            "name": "Juan Perez",
-            "phone": "3001234567",
-            "email": "juan@gmail.com",
-            "document": "123456789"
-        }
-    ]
+@router.get("/{client_id}")
+def get_client(client_id: int, db: Session = Depends(get_db)):
+    return db.query(Client).filter(Client.id == client_id).first()
